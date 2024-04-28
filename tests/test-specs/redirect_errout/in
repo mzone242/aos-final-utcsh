@@ -1,0 +1,5 @@
+path tests/test-utils /bin
+p6.sh > /tmp/mzone/utcsh/output25
+cat /tmp/mzone/utcsh/output25
+rm -f /tmp/mzone/utcsh/output25
+exit

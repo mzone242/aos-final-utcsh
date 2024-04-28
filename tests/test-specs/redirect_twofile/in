@@ -1,0 +1,2 @@
+ls > /tmp/mzone/utcsh/file1 > /tmp/mzone/utcsh/file2
+exit
