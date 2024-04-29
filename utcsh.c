@@ -91,20 +91,13 @@ CmdRes_t exec_external_command(struct Command *cmd) {
 
   posix_spawn_file_actions_t action;
   int err;
-  if (err = posix_spawn_file_actions_init(&action)) {
+  if ( (err = posix_spawn_file_actions_init(&action)) ) {
     fprintf(stderr, "Error posix_spawn_file_actions_init, errno: %s\n", strerror(err));
     exit(1);
   }
 
-  posix_spawnattr_t attr;
-  if (err = posix_spawnattr_init(&attr)) {
-    fprintf(stderr, "Error posix_spawnattr_init, errno: %s\n", strerror(err));
-    exit(1);
-  }
-
-
   // Open /dev/null over stdin
-  if (err = posix_spawn_file_actions_addopen(&action, 0, "/dev/null", O_RDONLY, 0)) {
+  if ( (err = posix_spawn_file_actions_addopen(&action, 0, "/dev/null", O_RDONLY, 0)) ) {
     fprintf(stderr, "Error posix_spawn_file_actions_addopen, errno: %s\n", strerror(err));
     exit(1);
   }
@@ -114,11 +107,11 @@ CmdRes_t exec_external_command(struct Command *cmd) {
     if (fd == -1) {
       print_error_msg();
     }
-    if (err = posix_spawn_file_actions_adddup2(&action, fd, 1)) {
+    if ( (err = posix_spawn_file_actions_adddup2(&action, fd, 1)) ) {
       fprintf(stderr, "Error posix_spawn_file_actions_adddup2, errno: %s\n", strerror(err));
       exit(1);
     }
-    if (err = posix_spawn_file_actions_adddup2(&action, fd, 2)) {
+    if ( (err = posix_spawn_file_actions_adddup2(&action, fd, 2)) ) {
       fprintf(stderr, "Error posix_spawn_file_actions_adddup2, errno: %s\n", strerror(err));
       exit(1);
     }

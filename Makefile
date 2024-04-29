@@ -48,7 +48,6 @@ turnin: turnin.tar
 clean:
 	rm -f $(SHELLNAME) *.o *~
 	rm -f .utcsh.grade.json readme.html shellspec.html
-	rm -f fib argprinter
 	rm -rf tests-out
 
 # Checks that the test scripts have valid executable permissions and fix them if not.
