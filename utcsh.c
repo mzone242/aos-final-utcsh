@@ -11,6 +11,7 @@
 in the future */
 #include <assert.h>
 #include <fcntl.h>
+#include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +20,7 @@ in the future */
 #include <unistd.h>
 #include "util.h"
 /* Global variables */
+extern char** environ;
 
 /* The array for holding shell paths. Can be edited by the functions in util.c*/
 char shell_paths[MAX_ENTRIES_IN_SHELLPATH][MAX_CHARS_PER_CMDLINE];
@@ -83,29 +85,94 @@ int main(int argc, char **argv) {
 }
 
 CmdRes_t exec_external_command(struct Command *cmd) {
-  assert(cmd->kind == External && "Trying to exec builtin with fork!");
+  assert(cmd->kind == External && "Trying to exec builtin with posix_spawn!");
 
-  pid_t cpid = fork();
-  if (cpid == 0) {
-    if (cmd->outputFile) {
-      int fd = open(cmd->outputFile, O_TRUNC | O_CREAT | O_WRONLY, 0644);
-      if (fd == -1) {
-        print_error_msg();
-      }
-      int duperr1 = dup2(fd, 1);
-      int duperr2 = dup2(fd, 2);
+  // int output_pipe[2];
+  // int err = pipe(output_pipe);
+  // if (err < 0) {
+  //   fprintf(stderr, "Error pipe, errno: %s\n", strerror(err));
+  //   exit(1);
+  // }
+  // int fd = output_pipe[0];
+  pid_t child_pid;
 
-      if (duperr1 == -1 || duperr2 == -1) {
-        print_error_msg();
-      }
-    }
-
-    execv(cmd->exePath, cmd->arguments);
-    print_error_msg();
+  posix_spawn_file_actions_t action;
+  int err = posix_spawn_file_actions_init(&action);
+  if (err != 0) {
+    fprintf(stderr, "Error posix_spawn_file_actions_init, errno: %s\n", strerror(err));
     exit(1);
-  } else {
-    return cpid;
   }
+  // err = posix_spawn_file_actions_addclose(&action, output_pipe[0]);
+  // if (err != 0) {
+  //   fprintf(stderr, "Error posix_spawn_file_actions_addclose, errno: %s\n", strerror(err));
+  //   exit(1);
+  // }
+
+  posix_spawnattr_t attr;
+  err = posix_spawnattr_init(&attr);
+  if (err != 0) {
+    fprintf(stderr, "Error posix_spawnattr_init, errno: %s\n", strerror(err));
+    exit(1);
+  }
+
+  // utcsh does not handle signals
+
+  // Open /dev/null over stdin
+  err = posix_spawn_file_actions_addopen(&action, 0, "/dev/null", O_RDONLY, 0);
+  if (err != 0) {
+    fprintf(stderr, "Error posix_spawn_file_actions_addopen, errno: %s\n", strerror(err));
+    exit(1);
+  }
+
+  if (cmd->outputFile) {
+    int fd = open(cmd->outputFile, O_TRUNC | O_CREAT | O_WRONLY, 0644);
+    if (fd == -1) {
+      print_error_msg();
+    }
+    err = posix_spawn_file_actions_adddup2(&action, fd, 1);
+    if (err != 0) {
+      fprintf(stderr, "Error posix_spawn_file_actions_adddup2, errno: %s\n", strerror(err));
+      exit(1);
+    }
+    err = posix_spawn_file_actions_adddup2(&action, fd, 2);
+    if (err != 0) {
+      fprintf(stderr, "Error posix_spawn_file_actions_adddup2, errno: %s\n", strerror(err));
+      exit(1);
+    }
+  }
+
+  err = posix_spawn(&child_pid, cmd->exePath, &action, NULL, cmd->arguments, environ);
+  if (err != 0) {
+    print_error_msg();
+    // fprintf(stderr, "Error posix_spawn, errno: %s\n", strerror(err));
+    // exit(1);
+  }
+
+  return child_pid;
+
+  
+
+  // pid_t cpid = fork();
+  // if (cpid == 0) {
+  //   if (cmd->outputFile) {
+  //     int fd = open(cmd->outputFile, O_TRUNC | O_CREAT | O_WRONLY, 0644);
+  //     if (fd == -1) {
+  //       print_error_msg();
+  //     }
+  //     int duperr1 = dup2(fd, 1);
+  //     int duperr2 = dup2(fd, 2);
+
+  //     if (duperr1 == -1 || duperr2 == -1) {
+  //       print_error_msg();
+  //     }
+  //   }
+
+  //   execv(cmd->exePath, cmd->arguments);
+  //   print_error_msg();
+  //   exit(1);
+  // } else {
+  //   return cpid;
+  // }
 }
 
 CmdRes_t exec_internal_command(struct Command *cmd) {
